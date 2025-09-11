@@ -1,6 +1,3 @@
-import polars as pl
-import pandas as pd
-import bz2
 
 INITIAL_URL = "https://progenomes.embl.de/data"
 
@@ -82,21 +79,27 @@ URL_MAPPING = [
 ]
 
 
-def process_url(item: str):
+def get_url(item: str):
+    for mapping in URL_MAPPING:
+        if mapping["name"] == item:
+            break
+    else:
+        raise ValueError(f"Item '{item}' not found in URL mapping.")
     mapping = next(iter(i for i in URL_MAPPING if i["name"] == item), None)
     if mapping["file-prefix"] is None:
-        return f"{INITIAL_URL}/{mapping['filename']}.{mapping['filetype']}", mapping[
-            "filetype"
-        ]
+        path = f"{mapping['filename']}.{mapping['filetype']}"
     else:
-        return (
-            f"{INITIAL_URL}/{mapping['file-prefix']}_{mapping['filename']}.{mapping['filetype']}",
-            mapping["filetype"],
-        )
+        path = f"{mapping['file-prefix']}_{mapping['filename']}.{mapping['filetype']}"
+    return (
+        f"{INITIAL_URL}/{path}", mapping["filetype"],
+    )
 
 
 def view(target):
-    url, filetype = process_url(target)
+    # These should not be imported at the top level as they are slow to import
+    import polars as pl
+    import pandas as pd
+    url, filetype = get_url(target)
     if ".bz2" in filetype:
         return pl.from_pandas(pd.read_table(url))
     else:
